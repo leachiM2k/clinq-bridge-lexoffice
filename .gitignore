@@ -1,0 +1,14 @@
+# Node files
+node_modules
+npm-debug.log
+yarn-error.log
+yarn.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+.env
+
+#TypeScript
+dist/
