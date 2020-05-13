@@ -2,6 +2,7 @@ export interface IOAuth2Options {
   LEXOFFICE_CLIENT_ID: string;
   LEXOFFICE_CLIENT_SECRET: string;
   LEXOFFICE_REDIRECT_URL: string;
+  LEXOFFICE_AUTH_URL: string;
   LEXOFFICE_BASE_URL: string;
 }
 
@@ -10,6 +11,7 @@ export default function parseEnvironment(): IOAuth2Options {
     LEXOFFICE_CLIENT_ID,
     LEXOFFICE_CLIENT_SECRET,
     LEXOFFICE_REDIRECT_URL,
+    LEXOFFICE_AUTH_URL,
     LEXOFFICE_BASE_URL
   } = process.env;
 
@@ -25,6 +27,10 @@ export default function parseEnvironment(): IOAuth2Options {
     throw new Error("Missing redirect url in environment.");
   }
 
+  if (!LEXOFFICE_AUTH_URL) {
+    throw new Error("Missing base URL in environment.");
+  }
+
   if (!LEXOFFICE_BASE_URL) {
     throw new Error("Missing base URL in environment.");
   }
@@ -33,6 +39,7 @@ export default function parseEnvironment(): IOAuth2Options {
     LEXOFFICE_CLIENT_ID,
     LEXOFFICE_CLIENT_SECRET,
     LEXOFFICE_REDIRECT_URL,
+    LEXOFFICE_AUTH_URL,
     LEXOFFICE_BASE_URL
   };
 }

@@ -1,6 +1,7 @@
 import { Contact, ContactTemplate, ContactUpdate } from "@clinq/bridge";
 import axios from "axios";
 import querystring from "querystring";
+import { authorizeApiKey } from "./access-token";
 import {
   convertContactToVendorContact,
   convertVendorContactToContact
@@ -76,15 +77,20 @@ export async function updateContact(
   return receivedContact;
 }
 
-export async function getContacts(
+export async function getContacts(apiKey: string): Promise<Contact[]> {
+  const { accessToken } = await authorizeApiKey(apiKey);
+  return getPaginatedContacts(accessToken);
+}
+
+async function getPaginatedContacts(
   accessToken: string,
-  page: number = 1,
+  page: number = 0,
   previousContacts?: Contact[]
 ): Promise<Contact[]> {
-  const url = `${parseEnvironment().LEXOFFICE_BASE_URL}/api/v2/users.json`;
+  const url = `${parseEnvironment().LEXOFFICE_BASE_URL}/v1/contacts/`;
   const response = await axios.get<ILexofficeContactResponse>(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
-    params: { role: "end-user", page }
+    params: { page }
   });
 
   if (!response || response.status !== 200) {
@@ -93,21 +99,21 @@ export async function getContacts(
     );
   }
 
-  if (!response.data || response.data.users.length === 0) {
+  if (!response.data || response.data.content.length === 0) {
     return previousContacts || [];
   }
 
   const contacts: Contact[] = previousContacts || [];
 
-  for (const vendorContact of response.data.users) {
+  for (const vendorContact of response.data.content) {
     const contact = convertVendorContactToContact(vendorContact);
     if (contact && contact.phoneNumbers.length > 0) {
       contacts.push(contact);
     }
   }
 
-  if (response.data.next_page) {
-    return getContacts(accessToken, page + 1, contacts);
+  if (!response.data.last) {
+    return getPaginatedContacts(accessToken, page + 1, contacts);
   }
 
   return contacts;
@@ -131,17 +137,15 @@ export function getOAuth2RedirectUrl(): string {
   const {
     LEXOFFICE_CLIENT_ID,
     LEXOFFICE_REDIRECT_URL,
-    LEXOFFICE_BASE_URL
+    LEXOFFICE_AUTH_URL
   } = parseEnvironment();
   return (
-    LEXOFFICE_BASE_URL +
-    "/oauth/authorizations/new?" +
+    LEXOFFICE_AUTH_URL +
+    "/api/oauth2/authorize?" +
     querystring.encode({
       client_id: LEXOFFICE_CLIENT_ID,
       response_type: "code",
-      redirect_uri: LEXOFFICE_REDIRECT_URL,
-      scope: "users:read users:write"
-      // state: Math.random() // XXX: optional
+      redirect_uri: LEXOFFICE_REDIRECT_URL
     })
   );
 }

@@ -134,10 +134,10 @@ class LexofficeAdapter implements Adapter {
       throw new Error("Invalid code");
     }
 
-    const { access_token } = await getTokens(code);
+    const { access_token, refresh_token } = await getTokens(code);
 
     return {
-      apiKey: `${access_token}`,
+      apiKey: `${access_token}:${refresh_token}`,
       apiUrl: ""
     };
   }
