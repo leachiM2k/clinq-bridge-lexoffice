@@ -6,21 +6,54 @@ export interface ILexofficeAuthResponse {
   scope: string;
 }
 
+interface ILexofficeContactContactPersons {
+  salutation?: string;
+  firstName?: string;
+  lastName?: string;
+  emailAddress?: string;
+  phoneNumber?: string;
+}
+
 export interface ILexofficeContact {
-  id?: number;
+  id?: string;
   organizationId?: string;
   version?: number;
   roles?: {
-    customer: {
-      number: number;
+    customer?: {
+      number?: number;
     };
   };
-  person?: {
-    salutation: string;
-    firstName: string;
-    lastName: string;
+  company?: {
+    name?: string;
+    taxNumber?: string;
+    vatRegistrationId?: string;
+    allowTaxFreeInvoices?: boolean;
+    contactPersons?: ILexofficeContactContactPersons[];
   };
-  archived: boolean;
+  emailAddresses?: {
+    business?: string[];
+    office?: string[];
+    private?: string[];
+    other?: string[];
+  } & {
+    [prop: string]: string;
+  };
+  phoneNumbers?: {
+    business?: string[];
+    office?: string[];
+    mobile?: string[];
+    private?: string[];
+    fax?: string[];
+    other?: string[];
+  } & {
+    [prop: string]: string[];
+  };
+  person?: {
+    salutation?: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  archived?: boolean;
 }
 
 export interface ILexofficeContactResponse {
@@ -35,5 +68,9 @@ export interface ILexofficeContactResponse {
 }
 
 export interface ILexofficeUpdateResponse {
-  user?: ILexofficeContact;
+  id: string;
+  resourceUri: string;
+  createdDate: string;
+  updatedDate: string;
+  version: number;
 }

@@ -4,59 +4,25 @@ import querystring from "querystring";
 import { authorizeApiKey } from "./access-token";
 import {
   convertContactToVendorContact,
+  convertContactUpdateToVendorContact,
   convertVendorContactToContact
 } from "./contact";
 import {
+  ILexofficeContact,
   ILexofficeContactResponse,
   ILexofficeUpdateResponse
 } from "./interfaces";
 import parseEnvironment from "./parse-environment";
 
 export async function createContact(
-  accessToken: string,
+  apiKey: string,
   contact: ContactTemplate
 ): Promise<Contact> {
   const vendorContact = convertContactToVendorContact(contact);
-
-  /**
-   * TODO:
-   * this route will fail if a user with same email address is already existing
-   * There is an alternative route `/api/v2/users/create_or_update.json` that would update an existing user
-   * what should we do?
-   * FAIL or UPDATE?
-   */
+  const { accessToken } = await authorizeApiKey(apiKey);
   const response = await axios.post<ILexofficeUpdateResponse>(
-    `${parseEnvironment().LEXOFFICE_BASE_URL}/api/v2/users.json`,
-    { user: vendorContact },
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-
-  if (!response || response.status !== 201) {
-    return Promise.reject(
-      `Error in Lexoffice response: ${response.statusText}`
-    );
-  }
-
-  if (!response.data || !response.data.user) {
-    throw new Error(`Could not create Lexoffice contact.`);
-  }
-
-  const receivedContact = convertVendorContactToContact(response.data.user);
-  if (!receivedContact) {
-    throw new Error("Could not parse received contact");
-  }
-  return receivedContact;
-}
-
-export async function updateContact(
-  accessToken: string,
-  contact: ContactUpdate
-): Promise<Contact> {
-  const vendorContact = convertContactToVendorContact(contact, contact.id);
-
-  const response = await axios.put<ILexofficeUpdateResponse>(
-    `${parseEnvironment().LEXOFFICE_BASE_URL}/api/v2/users/${contact.id}.json`,
-    { user: vendorContact },
+    `${parseEnvironment().LEXOFFICE_BASE_URL}/v1/contacts/`,
+    vendorContact,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
@@ -66,11 +32,64 @@ export async function updateContact(
     );
   }
 
-  if (!response.data || !response.data.user) {
+  if (!response.data || !response.data.id) {
+    throw new Error(`Could not create Lexoffice contact.`);
+  }
+
+  return getSingleContact(accessToken, response.data.id);
+}
+
+export async function updateContact(
+  apiKey: string,
+  contact: ContactUpdate
+): Promise<Contact> {
+  const { accessToken } = await authorizeApiKey(apiKey);
+  const responseGet = await axios.get<ILexofficeContact>(
+    `${parseEnvironment().LEXOFFICE_BASE_URL}/v1/contacts/${contact.id}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (!responseGet || responseGet.status !== 200) {
+    return Promise.reject(
+      `Error in Lexoffice response: ${responseGet.statusText}`
+    );
+  }
+
+  const response = await axios.put<ILexofficeUpdateResponse>(
+    `${parseEnvironment().LEXOFFICE_BASE_URL}/v1/contacts/${contact.id}`,
+    convertContactUpdateToVendorContact(contact, responseGet.data),
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (!response || response.status !== 200) {
+    return Promise.reject(
+      `Error in Lexoffice response: ${response.statusText}`
+    );
+  }
+
+  if (!response.data || !response.data.id) {
     throw new Error(`Could not update Lexoffice contact.`);
   }
 
-  const receivedContact = convertVendorContactToContact(response.data.user);
+  return getSingleContact(accessToken, response.data.id);
+}
+
+async function getSingleContact(
+  accessToken: string,
+  id: string
+): Promise<Contact> {
+  const responseGet = await axios.get<ILexofficeContact>(
+    `${parseEnvironment().LEXOFFICE_BASE_URL}/v1/contacts/${id}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (!responseGet || responseGet.status !== 200) {
+    return Promise.reject(
+      `Error in Lexoffice response: ${responseGet.statusText}`
+    );
+  }
+
+  const receivedContact = convertVendorContactToContact(responseGet.data);
   if (!receivedContact) {
     throw new Error("Could not parse received contact");
   }
@@ -107,7 +126,7 @@ async function getPaginatedContacts(
 
   for (const vendorContact of response.data.content) {
     const contact = convertVendorContactToContact(vendorContact);
-    if (contact && contact.phoneNumbers.length > 0) {
+    if (contact) {
       contacts.push(contact);
     }
   }
@@ -119,12 +138,10 @@ async function getPaginatedContacts(
   return contacts;
 }
 
-export async function deleteContact(
-  accessToken: string,
-  id: string
-): Promise<void> {
+export async function deleteContact(apiKey: string, id: string): Promise<void> {
+  const { accessToken } = await authorizeApiKey(apiKey);
   const response = await axios.delete<ILexofficeUpdateResponse>(
-    `${parseEnvironment().LEXOFFICE_BASE_URL}/api/v2/users/${id}.json`,
+    `${parseEnvironment().LEXOFFICE_BASE_URL}/v1/contacts/${id}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
