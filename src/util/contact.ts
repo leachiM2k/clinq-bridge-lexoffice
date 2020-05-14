@@ -173,7 +173,6 @@ export function convertContactToVendorContact(
         vendorContact.phoneNumbers = vendorContact.phoneNumbers || {};
         vendorContact.phoneNumbers[key] = [entry.phoneNumber];
       }
-      return (phoneNumberMap[entry.label] = entry.phoneNumber);
     });
   }
 
@@ -186,6 +185,40 @@ export function convertContactUpdateToVendorContact(
 ): ILexofficeContact {
   tryConvertNameToFirstLastName(contact);
   const vendorContact = { ...previousContact };
-  // TODO!!
+
+  if (contact.organization) {
+    vendorContact.company = {
+      name: contact.organization,
+      contactPersons: [
+        {
+          firstName: contact.firstName || undefined,
+          lastName: contact.lastName || undefined
+        }
+      ]
+    };
+    if (vendorContact.person) {
+      delete vendorContact.person;
+    }
+  }
+
+  if (vendorContact.person) {
+    vendorContact.person.firstName = contact.firstName || undefined;
+    vendorContact.person.lastName = contact.lastName || undefined;
+  }
+
+  if (contact.email) {
+    vendorContact.emailAddresses = vendorContact.emailAddresses || {};
+    vendorContact.emailAddresses.business = [contact.email];
+  }
+
+  if (Array.isArray(contact.phoneNumbers)) {
+    contact.phoneNumbers.forEach((entry: PhoneNumber) => {
+      if (phoneNumberMap[entry.label]) {
+        const key = phoneNumberMap[entry.label];
+        vendorContact.phoneNumbers = vendorContact.phoneNumbers || {};
+        vendorContact.phoneNumbers[key] = [entry.phoneNumber];
+      }
+    });
+  }
   return vendorContact;
 }
